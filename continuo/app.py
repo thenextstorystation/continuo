@@ -20,12 +20,14 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from . import bible as bible_store
+from . import billing
 from . import config
 from .models import AssetBible, DriftIssue, Shot
 from .grammars import GRAMMARS
 from .metering import Meter
 from .prompt_repair import repair_prompt
 from .providers import available_providers, get_provider
+from .sampling import FfmpegUnavailable, extract_frames, ffmpeg_exe
 from .vision import screen_clip
 
 app = FastAPI(title="Continuo", version="0.1.0")
@@ -34,7 +36,7 @@ _STATIC_DIR = os.path.join(os.path.dirname(__file__), "static")
 
 # In-memory cache of the bible, backed by the JSON store on disk.
 _bible: Optional[AssetBible] = bible_store.load_bible()
-_meter = Meter()
+_meter = Meter(sink=billing.get_sink())
 
 
 @app.get("/")
@@ -51,6 +53,8 @@ def health() -> dict:
         "vision_model": config.VISION_MODEL,
         "bible_loaded": _bible is not None,
         "regen_provider": get_provider().key,
+        "clip_decoding": ffmpeg_exe() is not None,
+        "billing_sink": type(_meter.sink).__name__,
     }
 
 
@@ -95,11 +99,14 @@ async def screen(
     shot: str = Form(...),
     frame: Optional[UploadFile] = File(None),
     frames: list[UploadFile] = File(default=[]),
+    clip: Optional[UploadFile] = File(None),
+    sample_count: int = Form(5),
 ) -> JSONResponse:
-    """Screen one or more sampled frames of a shot against the bible.
+    """Screen a shot against the bible.
 
-    Accepts a single ``frame`` and/or a list of ``frames`` (clip sampling). With
-    no upload it runs a single mock screening.
+    Accepts pre-sampled stills (``frame`` and/or ``frames``) and/or a generated
+    ``clip`` video, from which ``sample_count`` frames are extracted automatically.
+    With no upload it runs a single mock screening.
     """
     if _bible is None:
         raise HTTPException(status_code=400, detail="Register an asset bible first.")
@@ -112,6 +119,13 @@ async def screen(
     frame_tuples: list[tuple[bytes, str]] = [
         (await f.read(), f.content_type or "image/png") for f in uploads
     ]
+
+    if clip is not None:
+        n = max(1, min(24, sample_count))
+        try:
+            frame_tuples.extend(extract_frames(await clip.read(), n=n))
+        except FfmpegUnavailable as exc:
+            raise HTTPException(status_code=501, detail=str(exc)) from exc
 
     report, per_frame = screen_clip(_bible, shot_obj, frame_tuples)
     for r in per_frame:  # cost accrues per vision call (per frame)

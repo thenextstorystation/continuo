@@ -104,8 +104,14 @@
     <textarea id="prompt" style="min-height:80px"></textarea>
     <label>Generated frame(s) — one still, or several sampled from the clip</label>
     <input id="frame" type="file" accept="image/*" multiple />
-    <div class="hint">Optional & multi-select — screening several frames flags sustained
-      vs. intermittent drift. With no image (or no API key) a labelled mock screening runs.</div>
+    <div class="row">
+      <div><label>…or upload the generated clip</label>
+        <input id="clip" type="file" accept="video/*" /></div>
+      <div style="flex:0 0 130px"><label>Frames to sample</label>
+        <input id="sample-count" type="number" value="5" min="1" max="24" /></div>
+    </div>
+    <div class="hint">Screening several frames flags sustained vs. intermittent drift.
+      With no upload (or no API key) a labelled mock screening runs.</div>
     <button id="screen">Screen for drift</button>
   </section>
 
@@ -169,7 +175,10 @@ const SAMPLE_PROMPT =
 async function refreshMode() {
   try {
     const h = await (await fetch("/api/health")).json();
-    $("mode-val").textContent = h.live_vision ? ("live · " + h.vision_model) : "mock (no API key)";
+    const v = h.live_vision ? ("live · " + h.vision_model) : "mock (no API key)";
+    const clip = h.clip_decoding ? "" : " · no clip decoder";
+    $("mode-val").textContent = v + clip;
+    if (!h.clip_decoding) $("clip").disabled = true;
   } catch { $("mode-val").textContent = "offline"; }
 }
 
@@ -207,6 +216,10 @@ $("screen").onclick = async () => {
   const fd = new FormData();
   fd.append("shot", JSON.stringify(shot));
   for (const f of $("frame").files) fd.append("frames", f);
+  if ($("clip").files[0]) {
+    fd.append("clip", $("clip").files[0]);
+    fd.append("sample_count", $("sample-count").value || "5");
+  }
 
   $("screen").disabled = true; $("screen").textContent = "Screening…";
   try {

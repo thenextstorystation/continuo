@@ -15,6 +15,11 @@ from dataclasses import asdict, dataclass
 from typing import Any, Optional
 
 from . import config
+from .billing import BillingSink, NullSink
+
+# Billing meter names (Stripe event names / ledger keys).
+METER_SCREENING = "continuo.vision_screening"
+METER_REGENERATION = "continuo.regeneration"
 
 
 @dataclass
@@ -27,10 +32,18 @@ class Usage:
 
 
 class Meter:
-    def __init__(self, path: Optional[str] = None):
+    def __init__(self, path: Optional[str] = None, sink: Optional[BillingSink] = None):
         self.path = path if path is not None else config.USAGE_PATH
+        self.sink: BillingSink = sink if sink is not None else NullSink()
         self._lock = threading.Lock()
         self.usage = self._load()
+
+    def _bill(self, meter: str, quantity: int) -> None:
+        # Billing must never break the core QC flow.
+        try:
+            self.sink.push(meter, quantity)
+        except Exception:  # noqa: BLE001
+            pass
 
     def _load(self) -> Usage:
         if self.path and os.path.exists(self.path):
@@ -56,11 +69,15 @@ class Meter:
             else:
                 self.usage.mock_screenings += 1
             self._save()
+        # Only live screenings are billable (mock costs nothing).
+        if live:
+            self._bill(METER_SCREENING, 1)
 
     def record_regen(self) -> None:
         with self._lock:
             self.usage.regenerations += 1
             self._save()
+        self._bill(METER_REGENERATION, 1)
 
     def summary(self) -> dict[str, Any]:
         with self._lock:

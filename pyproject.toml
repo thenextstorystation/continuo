@@ -17,6 +17,8 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["pytest>=8.0", "httpx>=0.27"]
+video = ["imageio-ffmpeg>=0.4"]  # bundled ffmpeg for clip frame sampling
+billing = ["stripe>=7.0"]         # Stripe usage-based billing push
 
 [tool.setuptools.packages.find]
 include = ["continuo*"]

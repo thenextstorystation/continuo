@@ -9,6 +9,7 @@ venv/
 # Continuo runtime data (per-instance state)
 data/bible.json
 data/usage.json
+data/billing_ledger.jsonl
 
 # Secrets
 .env

@@ -62,7 +62,7 @@ uvicorn continuo.app:app --reload
 | `POST /api/bible`  | Register / replace the asset bible (JSON body)             |
 | `GET  /api/bible`  | Fetch the current bible                                    |
 | `GET  /api/grammars` | List supported model grammars                            |
-| `POST /api/screen` | Screen a frame (`multipart`: `shot` JSON + optional `frame`) → `DriftReport` |
+| `POST /api/screen` | Screen a shot (`multipart`: `shot` JSON + optional `frame`/`frames` stills and/or a `clip` video with `sample_count`) → aggregated `DriftReport` |
 | `POST /api/repair` | Rewrite a prompt to fix drift → `RepairedPrompt`           |
 | `POST /api/regenerate` | Submit a corrected prompt for regeneration → `RegenJob` |
 | `GET  /api/providers` | List regeneration providers and which is active         |
@@ -87,8 +87,10 @@ continuo/
   grammars.py       per-model prompt grammars (Kling / Seedance / Veo / Sora)
   prompt_repair.py  deterministic, prescriptive prompt-repair engine
   vision.py         Claude vision screening + structured drift report (mock fallback)
+  sampling.py       automatic frame sampling from an uploaded clip (ffmpeg)
   providers.py      one-click regeneration (dry-run default + HTTP adapter)
   metering.py       QC usage accounting + vision-cost estimate
+  billing.py        usage-based billing push (Stripe / local ledger)
   bible.py          JSON-backed asset-bible store
   app.py            FastAPI service + report-card UI
   static/index.html the report card
@@ -100,6 +102,16 @@ Vision judging uses Claude (`claude-opus-4-8` by default, override with
 matches a fixed JSON schema. Because drift-checking rides on a generic vision model,
 Continuo improves automatically as those models improve.
 
+## Optional extras
+
+```bash
+pip install imageio-ffmpeg   # clip upload + automatic frame sampling (bundled ffmpeg)
+pip install stripe           # push usage to Stripe billing meter events
+```
+
+Both are optional: clip decoding also uses a system `ffmpeg` if present, and
+without a Stripe key billable actions are written to a local JSONL ledger.
+
 ## Tests
 
 ```bash
@@ -110,8 +122,7 @@ pytest            # runs fully offline — the vision layer is exercised via its
 ## Roadmap
 
 - Wire a live provider adapter end to end (Kling / Higgsfield) behind the HTTP provider
-- Automatic frame sampling from an uploaded clip (currently frames are supplied per request)
-- Reference-image embedding match for faces, and Stripe push from the metering layer
+- Reference-image embedding match for faces (tighter face-drift precision)
 - Expand QC beyond continuity: audio sync, physics errors, hands
 
 ## Status

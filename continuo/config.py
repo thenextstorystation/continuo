@@ -21,6 +21,13 @@ REGEN_PROVIDER = os.environ.get("CONTINUO_REGEN_PROVIDER", "dry_run")
 REGEN_ENDPOINT = os.environ.get("CONTINUO_REGEN_ENDPOINT")
 REGEN_API_KEY = os.environ.get("CONTINUO_REGEN_API_KEY", "")
 
+# Usage-based billing. Events go to Stripe when STRIPE_API_KEY is set, else to a
+# local JSONL ledger. Set CONTINUO_BILLING=off to drop them entirely.
+BILLING_MODE = os.environ.get("CONTINUO_BILLING", "auto")
+BILLING_LEDGER_PATH = os.path.join(DATA_DIR, "billing_ledger.jsonl")
+STRIPE_API_KEY = os.environ.get("STRIPE_API_KEY", "")
+STRIPE_CUSTOMER = os.environ.get("STRIPE_CUSTOMER")
+
 # Vision judging defaults to the most capable Claude model. Keep vision cost
 # below ~10% of the customer's generation spend (per the product brief) by
 # swapping to a cheaper tier here if needed.
