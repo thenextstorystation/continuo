@@ -162,6 +162,9 @@ class DriftIssue:
     observed: str = ""
     asset_id: Optional[str] = None
     asset_name: Optional[str] = None
+    # Which sampled frames this drift was seen in (clip-level screening). Empty
+    # or single-element for a single still.
+    frame_indices: list[int] = field(default_factory=list)
 
     @classmethod
     def from_dict(cls, d: dict[str, Any]) -> "DriftIssue":
@@ -173,6 +176,7 @@ class DriftIssue:
             observed=d.get("observed", ""),
             asset_id=d.get("asset_id"),
             asset_name=d.get("asset_name"),
+            frame_indices=list(d.get("frame_indices", [])),
         )
 
 

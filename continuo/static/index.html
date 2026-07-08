@@ -102,9 +102,10 @@
     </div>
     <label>Prompt used to generate the shot</label>
     <textarea id="prompt" style="min-height:80px"></textarea>
-    <label>Generated frame (still)</label>
-    <input id="frame" type="file" accept="image/*" />
-    <div class="hint">Optional — with no image (or no API key) a labelled mock screening runs.</div>
+    <label>Generated frame(s) — one still, or several sampled from the clip</label>
+    <input id="frame" type="file" accept="image/*" multiple />
+    <div class="hint">Optional & multi-select — screening several frames flags sustained
+      vs. intermittent drift. With no image (or no API key) a labelled mock screening runs.</div>
     <button id="screen">Screen for drift</button>
   </section>
 
@@ -205,8 +206,7 @@ $("screen").onclick = async () => {
   };
   const fd = new FormData();
   fd.append("shot", JSON.stringify(shot));
-  const f = $("frame").files[0];
-  if (f) fd.append("frame", f);
+  for (const f of $("frame").files) fd.append("frames", f);
 
   $("screen").disabled = true; $("screen").textContent = "Screening…";
   try {
@@ -226,7 +226,8 @@ function renderReport(rep) {
     : rep.status === "fail" ? "var(--fail)" : "var(--warn)";
   const badge = $("status");
   badge.textContent = rep.status; badge.className = "badge " + rep.status;
-  $("model-used").textContent = "screened by " + rep.model_used;
+  const frames = rep.frame_count ? `${rep.frame_count} frame${rep.frame_count > 1 ? "s" : ""} · ` : "";
+  $("model-used").textContent = frames + "screened by " + rep.model_used;
   $("summary").textContent = rep.summary;
 
   $("issues").innerHTML = rep.issues.length

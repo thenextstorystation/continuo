@@ -26,7 +26,7 @@ from .grammars import GRAMMARS
 from .metering import Meter
 from .prompt_repair import repair_prompt
 from .providers import available_providers, get_provider
-from .vision import screen_shot
+from .vision import screen_clip
 
 app = FastAPI(title="Continuo", version="0.1.0")
 
@@ -94,7 +94,13 @@ async def set_bible(payload: dict) -> dict:
 async def screen(
     shot: str = Form(...),
     frame: Optional[UploadFile] = File(None),
+    frames: list[UploadFile] = File(default=[]),
 ) -> JSONResponse:
+    """Screen one or more sampled frames of a shot against the bible.
+
+    Accepts a single ``frame`` and/or a list of ``frames`` (clip sampling). With
+    no upload it runs a single mock screening.
+    """
     if _bible is None:
         raise HTTPException(status_code=400, detail="Register an asset bible first.")
     try:
@@ -102,12 +108,19 @@ async def screen(
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(status_code=400, detail=f"Invalid shot payload: {exc}") from exc
 
-    image_bytes = await frame.read() if frame is not None else None
-    media_type = (frame.content_type if frame is not None else None) or "image/png"
+    uploads = ([frame] if frame is not None else []) + list(frames)
+    frame_tuples: list[tuple[bytes, str]] = [
+        (await f.read(), f.content_type or "image/png") for f in uploads
+    ]
 
-    report = screen_shot(_bible, shot_obj, image_bytes=image_bytes, media_type=media_type)
-    _meter.record_screen(live=not report.model_used.startswith("mock"))
-    return JSONResponse(report.to_dict())
+    report, per_frame = screen_clip(_bible, shot_obj, frame_tuples)
+    for r in per_frame:  # cost accrues per vision call (per frame)
+        _meter.record_screen(live=not r.model_used.startswith("mock"))
+
+    body = report.to_dict()
+    body["frame_count"] = len(per_frame)
+    body["per_frame"] = [r.to_dict() for r in per_frame]
+    return JSONResponse(body)
 
 
 @app.post("/api/repair")

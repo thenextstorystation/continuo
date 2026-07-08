@@ -25,9 +25,12 @@ Asset bible ─▶ Screen a frame ─▶ Report card ─▶ Prompt repair ─▶
 ```
 
 1. **Register** the asset bible — the canonical definitions every shot is judged against.
-2. **Screen** a generated frame. A Claude vision model compares it to the bible and
-   returns a structured drift report across five dimensions — `face`, `wardrobe`,
-   `lighting`, `set_geometry`, `prop` — each with the expected vs. observed appearance.
+2. **Screen** a generated shot — one still, or several frames sampled from the clip.
+   A Claude vision model compares each frame to the bible and returns a structured
+   drift report across five dimensions — `face`, `wardrobe`, `lighting`,
+   `set_geometry`, `prop` — each with the expected vs. observed appearance. Across a
+   clip, drift is aggregated so a one-frame flicker is distinguished from a drift
+   sustained across the whole shot.
 3. **Read the report card** — an overall status (`pass` / `warn` / `fail`), a
    consistency score, and a per-issue breakdown.
 4. **Repair the prompt** — Continuo rewrites the prompt to correct medium/high drift,
@@ -107,7 +110,7 @@ pytest            # runs fully offline — the vision layer is exercised via its
 ## Roadmap
 
 - Wire a live provider adapter end to end (Kling / Higgsfield) behind the HTTP provider
-- Clip-level screening (sample N frames per shot) instead of single stills
+- Automatic frame sampling from an uploaded clip (currently frames are supplied per request)
 - Reference-image embedding match for faces, and Stripe push from the metering layer
 - Expand QC beyond continuity: audio sync, physics errors, hands
 
