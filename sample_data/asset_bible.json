@@ -1,0 +1,44 @@
+{
+  "project": "Neon Alley (ep. 3)",
+  "characters": [
+    {
+      "id": "kaito",
+      "name": "Kaito",
+      "description": "late-20s courier, short black hair, lean build",
+      "face_notes": "thin scar across the LEFT cheek"
+    },
+    {
+      "id": "mira",
+      "name": "Mira",
+      "description": "30s noodle-bar owner, silver undercut",
+      "face_notes": "small mole above the right eyebrow"
+    }
+  ],
+  "wardrobe": [
+    {
+      "id": "jacket",
+      "name": "bomber jacket",
+      "worn_by": "kaito",
+      "description": "worn leather bomber",
+      "colors": ["navy blue"]
+    },
+    {
+      "id": "apron",
+      "name": "canvas apron",
+      "worn_by": "mira",
+      "description": "oil-stained canvas apron",
+      "colors": ["mustard yellow"]
+    }
+  ],
+  "props": [
+    { "id": "helmet", "name": "courier helmet", "description": "matte charcoal full-face helmet" }
+  ],
+  "locations": [
+    {
+      "id": "kitchen",
+      "name": "noodle-bar kitchen",
+      "description": "cramped street-food kitchen at night",
+      "key_features": ["no window on the back wall", "hanging paper lanterns", "steel prep counter"]
+    }
+  ]
+}
