@@ -23,7 +23,9 @@ from . import bible as bible_store
 from . import config
 from .models import AssetBible, DriftIssue, Shot
 from .grammars import GRAMMARS
+from .metering import Meter
 from .prompt_repair import repair_prompt
+from .providers import available_providers, get_provider
 from .vision import screen_shot
 
 app = FastAPI(title="Continuo", version="0.1.0")
@@ -32,6 +34,7 @@ _STATIC_DIR = os.path.join(os.path.dirname(__file__), "static")
 
 # In-memory cache of the bible, backed by the JSON store on disk.
 _bible: Optional[AssetBible] = bible_store.load_bible()
+_meter = Meter()
 
 
 @app.get("/")
@@ -47,6 +50,7 @@ def health() -> dict:
         "live_vision": config.has_api_key(),
         "vision_model": config.VISION_MODEL,
         "bible_loaded": _bible is not None,
+        "regen_provider": get_provider().key,
     }
 
 
@@ -102,6 +106,7 @@ async def screen(
     media_type = (frame.content_type if frame is not None else None) or "image/png"
 
     report = screen_shot(_bible, shot_obj, image_bytes=image_bytes, media_type=media_type)
+    _meter.record_screen(live=not report.model_used.startswith("mock"))
     return JSONResponse(report.to_dict())
 
 
@@ -114,6 +119,48 @@ async def repair(payload: dict) -> dict:
         raise HTTPException(status_code=400, detail="original_prompt is required.")
     repaired = repair_prompt(original, model, issues)
     return repaired.to_dict()
+
+
+@app.get("/api/providers")
+def providers() -> dict:
+    return available_providers()
+
+
+@app.get("/api/usage")
+def usage() -> dict:
+    return _meter.summary()
+
+
+@app.post("/api/regenerate")
+async def regenerate(payload: dict) -> dict:
+    """Submit a corrected prompt for one-click regeneration.
+
+    Accepts an already-repaired prompt (``prompt`` [+ ``negative_prompt``]), or an
+    ``original_prompt`` + ``issues`` pair which is repaired here first.
+    """
+    model = payload.get("model", "kling")
+    prompt = (payload.get("prompt") or "").strip()
+    negative_prompt = payload.get("negative_prompt")
+
+    if not prompt:
+        original = (payload.get("original_prompt") or "").strip()
+        if not original:
+            raise HTTPException(
+                status_code=400, detail="Provide either 'prompt' or 'original_prompt'."
+            )
+        issues = [DriftIssue.from_dict(x) for x in payload.get("issues", [])]
+        repaired = repair_prompt(original, model, issues)
+        prompt, negative_prompt = repaired.prompt, repaired.negative_prompt
+
+    job = get_provider().regenerate(
+        model=model,
+        prompt=prompt,
+        negative_prompt=negative_prompt,
+        aspect_ratio=payload.get("aspect_ratio", "16:9"),
+        duration=int(payload.get("duration", 5)),
+    )
+    _meter.record_regen()
+    return job.to_dict()
 
 
 # Serve any additional static assets (kept last so /api routes win).

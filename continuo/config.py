@@ -8,6 +8,18 @@ _ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 DATA_DIR = os.environ.get("CONTINUO_DATA_DIR", os.path.join(_ROOT, "data"))
 BIBLE_PATH = os.path.join(DATA_DIR, "bible.json")
+USAGE_PATH = os.path.join(DATA_DIR, "usage.json")
+
+# QC metering. Estimated cost of one live vision screening, used to surface the
+# "keep QC below ~10% of generation spend" guardrail from the product brief.
+VISION_COST_PER_SCREEN = float(os.environ.get("CONTINUO_VISION_COST_PER_SCREEN", "0.02"))
+
+# One-click corrected regeneration. Defaults to a dry-run provider that never
+# calls out or spends credits; set CONTINUO_REGEN_PROVIDER=http with an endpoint
+# + key to submit to a real text-to-video provider (Kling / Higgsfield / ...).
+REGEN_PROVIDER = os.environ.get("CONTINUO_REGEN_PROVIDER", "dry_run")
+REGEN_ENDPOINT = os.environ.get("CONTINUO_REGEN_ENDPOINT")
+REGEN_API_KEY = os.environ.get("CONTINUO_REGEN_API_KEY", "")
 
 # Vision judging defaults to the most capable Claude model. Keep vision cost
 # below ~10% of the customer's generation spend (per the product brief) by

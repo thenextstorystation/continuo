@@ -67,6 +67,11 @@
   .muted { color: var(--muted); }
   .notes { font-size: 12px; color: var(--muted); margin-top: 8px; }
   .notes li { margin: 2px 0; }
+  .job { margin-top: 14px; border: 1px solid var(--line); border-radius: 8px;
+         padding: 12px; background: var(--panel-2); font-size: 13px; }
+  .job .jstatus { font-weight: 700; text-transform: uppercase; letter-spacing: .05em; }
+  .job a { color: var(--accent-2); }
+  #usage b { color: var(--text); }
   @media (max-width: 820px) { main { grid-template-columns: 1fr; } }
 </style>
 </head>
@@ -125,12 +130,21 @@
       <pre class="out neg" id="negative"></pre>
     </div>
     <ul class="notes" id="repair-notes"></ul>
+    <button id="regen">Regenerate corrected shot →</button>
+    <div id="job" class="job" style="display:none"></div>
+  </section>
+
+  <!-- Usage -->
+  <section class="panel full">
+    <h2>QC Usage</h2>
+    <div id="usage" class="muted">—</div>
   </section>
 </main>
 
 <script>
 const $ = (id) => document.getElementById(id);
 let lastReport = null;
+let lastRepair = null;
 
 const SAMPLE_BIBLE = {
   project: "Neon Alley (ep. 3)",
@@ -199,6 +213,7 @@ $("screen").onclick = async () => {
     const r = await fetch("/api/screen", { method: "POST", body: fd });
     if (!r.ok) throw new Error((await r.json()).detail);
     renderReport(await r.json());
+    refreshUsage();
   } catch (e) { alert("Screening failed: " + e.message); }
   finally { $("screen").disabled = false; $("screen").textContent = "Screen for drift"; }
 };
@@ -240,6 +255,7 @@ $("repair").onclick = async () => {
   });
   if (!r.ok) return alert("Repair failed: " + (await r.json()).detail);
   const rp = await r.json();
+  lastRepair = rp;
   $("repair-panel").style.display = "block";
   $("repair-model").textContent = "· for " + rp.model;
   $("repaired").textContent = rp.prompt;
@@ -247,9 +263,47 @@ $("repair").onclick = async () => {
     $("neg-wrap").style.display = "block"; $("negative").textContent = rp.negative_prompt;
   } else $("neg-wrap").style.display = "none";
   $("repair-notes").innerHTML = (rp.notes || []).map(n => `<li>${n}</li>`).join("");
+  $("job").style.display = "none";
 };
 
-refreshMode(); loadGrammars();
+$("regen").onclick = async () => {
+  if (!lastRepair) return;
+  $("regen").disabled = true; $("regen").textContent = "Submitting…";
+  try {
+    const r = await fetch("/api/regenerate", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: lastRepair.model,
+        prompt: lastRepair.prompt,
+        negative_prompt: lastRepair.negative_prompt
+      })
+    });
+    if (!r.ok) throw new Error((await r.json()).detail);
+    const job = await r.json();
+    const link = job.output_url
+      ? ` · <a href="${job.output_url}" target="_blank">view clip</a>` : "";
+    $("job").style.display = "block";
+    $("job").innerHTML =
+      `<span class="jstatus">${job.status}</span> · ${job.provider} · <code>${job.id}</code>${link}
+       <div class="muted" style="margin-top:6px">${job.detail}</div>`;
+    refreshUsage();
+  } catch (e) { alert("Regeneration failed: " + e.message); }
+  finally { $("regen").disabled = false; $("regen").textContent = "Regenerate corrected shot →"; }
+};
+
+async function refreshUsage() {
+  try {
+    const u = await (await fetch("/api/usage")).json();
+    $("usage").innerHTML =
+      `<b>${u.shots_screened}</b> shots screened ` +
+      `(<b>${u.live_screenings}</b> live, <b>${u.mock_screenings}</b> mock) · ` +
+      `<b>${u.regenerations}</b> regenerations · ` +
+      `est. vision cost <b>$${u.est_vision_cost_usd}</b> ` +
+      `(@ $${u.cost_per_screen_usd}/screen)`;
+  } catch { $("usage").textContent = "unavailable"; }
+}
+
+refreshMode(); loadGrammars(); refreshUsage();
 </script>
 </body>
 </html>

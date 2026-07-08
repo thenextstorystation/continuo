@@ -20,8 +20,8 @@ regeneration.
 ## The loop
 
 ```
-Asset bible ──▶ Screen a generated frame ──▶ Report card ──▶ Prompt repair ──▶ Corrected regeneration
-  (canonical)     (Claude vision vs bible)     (drift + score)   (per-model grammar)
+Asset bible ─▶ Screen a frame ─▶ Report card ─▶ Prompt repair ─▶ One-click regeneration
+ (canonical)   (vision vs bible)  (drift+score)  (per-model grammar)  (provider, metered)
 ```
 
 1. **Register** the asset bible — the canonical definitions every shot is judged against.
@@ -33,6 +33,10 @@ Asset bible ──▶ Screen a generated frame ──▶ Report card ──▶ P
 4. **Repair the prompt** — Continuo rewrites the prompt to correct medium/high drift,
    in the target model's own grammar (Kling's negative-prompt field, Seedance's inline
    tags, Veo/Sora prose).
+5. **Regenerate** — submit the corrected prompt straight back to a text-to-video
+   provider in one click. Defaults to a dry-run provider (no external call, no credits);
+   point it at a real provider (Kling / Higgsfield) via env. Every screening and
+   regeneration is metered so QC spend stays visible against generation spend.
 
 ## Quick start
 
@@ -57,7 +61,10 @@ uvicorn continuo.app:app --reload
 | `GET  /api/grammars` | List supported model grammars                            |
 | `POST /api/screen` | Screen a frame (`multipart`: `shot` JSON + optional `frame`) → `DriftReport` |
 | `POST /api/repair` | Rewrite a prompt to fix drift → `RepairedPrompt`           |
-| `GET  /api/health` | Service + vision status                                    |
+| `POST /api/regenerate` | Submit a corrected prompt for regeneration → `RegenJob` |
+| `GET  /api/providers` | List regeneration providers and which is active         |
+| `GET  /api/usage`  | QC metering summary (screenings, regenerations, est. cost) |
+| `GET  /api/health` | Service + vision + provider status                         |
 
 ### Example: screen then repair (mock mode, no key needed)
 
@@ -77,6 +84,8 @@ continuo/
   grammars.py       per-model prompt grammars (Kling / Seedance / Veo / Sora)
   prompt_repair.py  deterministic, prescriptive prompt-repair engine
   vision.py         Claude vision screening + structured drift report (mock fallback)
+  providers.py      one-click regeneration (dry-run default + HTTP adapter)
+  metering.py       QC usage accounting + vision-cost estimate
   bible.py          JSON-backed asset-bible store
   app.py            FastAPI service + report-card UI
   static/index.html the report card
@@ -97,9 +106,9 @@ pytest            # runs fully offline — the vision layer is exercised via its
 
 ## Roadmap
 
-- One-click corrected regeneration via a provider integration (Higgsfield / Kling)
+- Wire a live provider adapter end to end (Kling / Higgsfield) behind the HTTP provider
 - Clip-level screening (sample N frames per shot) instead of single stills
-- Reference-image embedding match for faces, and Stripe per-minute QC metering
+- Reference-image embedding match for faces, and Stripe push from the metering layer
 - Expand QC beyond continuity: audio sync, physics errors, hands
 
 ## Status

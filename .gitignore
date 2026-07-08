@@ -6,8 +6,9 @@ __pycache__/
 venv/
 .pytest_cache/
 
-# Continuo runtime data (the registered bible is per-instance state)
+# Continuo runtime data (per-instance state)
 data/bible.json
+data/usage.json
 
 # Secrets
 .env
