@@ -38,8 +38,10 @@ Asset bible ─▶ Screen a frame ─▶ Report card ─▶ Prompt repair ─▶
    tags, Veo/Sora prose).
 5. **Regenerate** — submit the corrected prompt straight back to a text-to-video
    provider in one click. Defaults to a dry-run provider (no external call, no credits);
-   point it at a real provider (Kling / Higgsfield) via env. Every screening and
-   regeneration is metered so QC spend stays visible against generation spend.
+   select a real provider via env — a generic single-shot `http` adapter, or the
+   submit-then-poll `kling` / `higgsfield` adapters that wait for the clip to render.
+   Every screening and regeneration is metered so QC spend stays visible against
+   generation spend.
 
 ## Quick start
 
@@ -88,7 +90,7 @@ continuo/
   prompt_repair.py  deterministic, prescriptive prompt-repair engine
   vision.py         Claude vision screening + structured drift report (mock fallback)
   sampling.py       automatic frame sampling from an uploaded clip (ffmpeg)
-  providers.py      one-click regeneration (dry-run default + HTTP adapter)
+  providers.py      one-click regeneration (dry-run + http + Kling/Higgsfield poll)
   metering.py       QC usage accounting + vision-cost estimate
   billing.py        usage-based billing push (Stripe / local ledger)
   bible.py          JSON-backed asset-bible store
@@ -121,7 +123,9 @@ pytest            # runs fully offline — the vision layer is exercised via its
 
 ## Roadmap
 
-- Wire a live provider adapter end to end (Kling / Higgsfield) behind the HTTP provider
+- Confirm the Kling / Higgsfield submit + status endpoints and payload against
+  the live API (the submit-then-poll adapter is built and tested against a fake
+  transport; only the exact URLs/field names need pinning to go live)
 - Reference-image embedding match for faces (tighter face-drift precision)
 - Expand QC beyond continuity: audio sync, physics errors, hands
 

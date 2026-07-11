@@ -21,6 +21,22 @@ REGEN_PROVIDER = os.environ.get("CONTINUO_REGEN_PROVIDER", "dry_run")
 REGEN_ENDPOINT = os.environ.get("CONTINUO_REGEN_ENDPOINT")
 REGEN_API_KEY = os.environ.get("CONTINUO_REGEN_API_KEY", "")
 
+# Polling behaviour for submit-then-poll providers (Kling / Higgsfield).
+REGEN_POLL_INTERVAL = float(os.environ.get("CONTINUO_REGEN_POLL_INTERVAL", "2.0"))
+REGEN_MAX_POLLS = int(os.environ.get("CONTINUO_REGEN_MAX_POLLS", "30"))
+
+# Concrete provider endpoints. Empty by default — set the pair for the provider
+# you use, plus its API key, and select it via CONTINUO_REGEN_PROVIDER. The
+# status URL is a template containing '{id}'. Verify the exact URLs and payload
+# against the provider's current API docs before going live.
+KLING_SUBMIT_URL = os.environ.get("CONTINUO_KLING_SUBMIT_URL", "")
+KLING_STATUS_URL = os.environ.get("CONTINUO_KLING_STATUS_URL", "")
+KLING_API_KEY = os.environ.get("CONTINUO_KLING_API_KEY", "")
+
+HIGGSFIELD_SUBMIT_URL = os.environ.get("CONTINUO_HIGGSFIELD_SUBMIT_URL", "")
+HIGGSFIELD_STATUS_URL = os.environ.get("CONTINUO_HIGGSFIELD_STATUS_URL", "")
+HIGGSFIELD_API_KEY = os.environ.get("CONTINUO_HIGGSFIELD_API_KEY", "")
+
 # Usage-based billing. Events go to Stripe when STRIPE_API_KEY is set, else to a
 # local JSONL ledger. Set CONTINUO_BILLING=off to drop them entirely.
 BILLING_MODE = os.environ.get("CONTINUO_BILLING", "auto")
